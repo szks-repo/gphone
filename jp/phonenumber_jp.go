@@ -9,7 +9,23 @@ import (
 
 type JapanPhoneNumber struct {
 	phoneNumber *gphone.PhoneNumber
+	phoneType   *PhoneType
 }
+
+type PhoneType struct {
+	Name            string
+	sepIndexPattern []int
+	IsFree          bool
+}
+
+const (
+	phoneTypeMobile           = "Mobile"
+	phoneTypeFixed            = "Fixed"
+	phoneTypeImportant        = "Important"
+	//特番?
+	phoneTypeHighLevelService = "HighLevelService"
+	phoneTypeRelay            = "Relay"
+)
 
 var (
 	// 携帯電話
@@ -28,25 +44,16 @@ var (
 )
 
 func NewJapanPhoneNumber(ph *gphone.PhoneNumber) *JapanPhoneNumber {
-	return &JapanPhoneNumber{
+	jph := &JapanPhoneNumber{
 		phoneNumber: ph,
 	}
-}
 
-type PhoneType struct {
-	Name            string
-	sepIndexPattern []int
-	IsFree          bool
-}
+	if phtype := jph.GetPhoneType(); phtype != nil {
+		jph.phoneType = phtype
+	}
 
-const (
-	phoneTypeMobile           = "Mobile"
-	phoneTypeFixed            = "Fixed"
-	phoneTypeImportant        = "Important"
-	//特番?
-	phoneTypeHighLevelService = "HighLevelService"
-	phoneTypeRelay            = "Relay"
-)
+	return jph
+}
 
 func (jp *JapanPhoneNumber) GetPhoneType() *PhoneType {
 	// 携帯電話
@@ -112,7 +119,7 @@ func (jp *JapanPhoneNumber) GetPhoneType() *PhoneType {
 		}
 	}
 
-	return &PhoneType{}
+	return nil
 }
 
 type Separator string
@@ -131,8 +138,7 @@ func (jp *JapanPhoneNumber) Separate(sep Separator, sepIndexPattern ...[]int) st
 		return jp.phoneNumber.Value()
 	}
 
-	phType := jp.GetPhoneType()
-	pattern := phType.sepIndexPattern
+	pattern := jp.phoneType.sepIndexPattern
 	if len(sepIndexPattern) > 0 && sepIndexPattern[0] != nil {
 		pattern = sepIndexPattern[0]
 	}

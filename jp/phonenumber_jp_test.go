@@ -13,7 +13,10 @@ func TestNewJp(t *testing.T) {
 		t.Error(err)
 	}
 
-	jph := NewJapanPhoneNumber(ph)
+	jph, err := NewJapanPhoneNumber(ph)
+	if err != nil {
+		t.Error(err)
+	}
 
 	fmt.Println(jph.Separate(SepHyphen))
 	fmt.Println(jph.Separate(SepDot))

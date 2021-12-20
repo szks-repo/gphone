@@ -1,6 +1,7 @@
 package jp
 
 import (
+	"errors"
 	"fmt"
 	"github.com/szks-repo/gphone"
 	"regexp"
@@ -43,19 +44,32 @@ var (
 	//fixedPhoneInCityPattern = regexp.MustCompile(`^[2-9]`)
 )
 
-func NewJapanPhoneNumber(ph *gphone.PhoneNumber) *JapanPhoneNumber {
+var real3DigitNumbers = []string{
+	"104",
+	"110",
+	"115",
+	"117",
+	"118",
+	"119",
+	"171",
+	"177",
+}
+
+func NewJapanPhoneNumber(ph *gphone.PhoneNumber) (*JapanPhoneNumber, error) {
 	jph := &JapanPhoneNumber{
 		phoneNumber: ph,
 	}
 
-	if phtype := jph.GetPhoneType(); phtype != nil {
-		jph.phoneType = phtype
+	phtype, err := jph.GetPhoneType();
+	if err != nil {
+		return nil, err
 	}
+	jph.phoneType = phtype
 
-	return jph
+	return jph, nil
 }
 
-func (jp *JapanPhoneNumber) GetPhoneType() *PhoneType {
+func (jp *JapanPhoneNumber) GetPhoneType() (*PhoneType, error) {
 	// 携帯電話
 	if mobilePhonePattern.MatchString(jp.phoneNumber.Value()) {
 		pht := &PhoneType{
@@ -67,7 +81,7 @@ func (jp *JapanPhoneNumber) GetPhoneType() *PhoneType {
 			pht.IsFree = true
 		}
 
-		return pht
+		return pht, nil
 	}
 
 	// 固定電話
@@ -76,26 +90,28 @@ func (jp *JapanPhoneNumber) GetPhoneType() *PhoneType {
 		return &PhoneType{
 			Name:            phoneTypeFixed,
 			sepIndexPattern: []int{2, 5, 9},
-		}
+		}, nil
 	}
 	if strings.HasPrefix(jp.phoneNumber.Value(), "0550") {
 		return &PhoneType{
 			Name:            phoneTypeFixed,
 			sepIndexPattern: []int{3, 5, 9},
-		}
+		}, nil
 	}
 
 	// 0120 フリーダイヤル
 	// 0570 ナビダイヤル
 	//
 	if highLevelServicePattern.MatchString(jp.phoneNumber.Value()) {
-		pht := &PhoneType{
+		phtype := &PhoneType{
 			Name:            phoneTypeHighLevelService,
 			sepIndexPattern: []int{3, 5, 9},
 		}
 		if strings.HasPrefix(jp.phoneNumber.Value(), "0120") {
-			pht.IsFree = true
+			phtype.IsFree = true
 		}
+
+		return phtype, nil
 	}
 
 	// 104 電話番号の案内
@@ -107,19 +123,25 @@ func (jp *JapanPhoneNumber) GetPhoneType() *PhoneType {
 	// 171 災害用伝言ダイヤル
 	// 177 天気予報
 	if strings.HasPrefix(jp.phoneNumber.Value(), "1") && len(jp.phoneNumber.Value()) == 3 {
-		return &PhoneType{
-			Name: phoneTypeImportant,
+		for _, num := range real3DigitNumbers {
+			if num == jp.phoneNumber.Value() {
+				return &PhoneType{
+					Name: phoneTypeImportant,
+				}, nil
+			}
 		}
+
+		return nil, errors.New("not present number")
 	}
 
 	// 中継電話
 	if relayPhonePattern.MatchString(jp.phoneNumber.Value()) {
 		return &PhoneType{
 			Name: phoneTypeRelay,
-		}
+		}, nil
 	}
 
-	return nil
+	return nil, errors.New("unknown or unsupported phone type")
 }
 
 type Separator string
